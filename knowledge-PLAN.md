@@ -343,3 +343,9 @@ agentgateway:
 - `docs/decisions.md` records the outcome of every **VERIFY** item.
 - README quick start: clone → `cp compose/.env.example compose/.env` →
   `docker compose up -d` → run smoke test → connect an agent.
+
+Note:
+- I have cloned the llm-wiki repo at: ~/workspace/src/llm-wiki for when you need it.
+- I have cloned the orignal llm-wiki skills at ~/workspace/src/llm-wiki-skills to base the skills of.
+
+
