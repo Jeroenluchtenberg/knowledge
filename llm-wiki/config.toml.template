@@ -1,0 +1,17 @@
+# llm-wiki global config — rendered by entrypoint.sh on first start.
+# Settings driven by environment variables (allowed hosts, logging) are
+# re-applied on every start via `llm-wiki config set`, so edits to those keys
+# here are overwritten. Wikis are registered with `llm-wiki spaces create`.
+
+[global]
+default_wiki = ""
+
+[serve]
+http_port = ${LLM_WIKI_PORT}
+
+[ingest]
+auto_commit = true
+
+[logging]
+log_format = "json"
+log_path = ""
