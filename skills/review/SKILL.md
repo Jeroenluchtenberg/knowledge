@@ -64,6 +64,10 @@ Filter to pages where `confidence < 0.4`.
 Within each tier: sort by `confidence` ascending (least certain first), then
 `last_updated` ascending (oldest first).
 
+Skip retired pages (`status: archived` or `superseded`). Their `orphan`
+warnings are expected. A broken-link finding *on* a retired page does
+not need fixing, since nobody follows its links.
+
 If the user provided a `max-items` argument, cap the queue at that count.
 
 ## Step 3 — Review loop
@@ -92,7 +96,12 @@ Present:
 | **Update** | Content is partially correct | Edit claims, update `confidence`, keep `status: draft` if still incomplete, commit |
 | **Resolve contradiction** | Page has open question from ingest | Verify conflicting claims, update `claims[]`, remove open question, adjust `confidence`, commit |
 | **Defer** | Cannot verify now | Leave as-is, add a dated note in body; skip for this session |
-| **Flag for deletion** | Page is redundant or wrong | Set `status: archived`, lower `confidence` to 0.1, add `superseded_by` if applicable, commit |
+| **Archive** | Page is low-value, wrong or outdated, and nothing replaces it | Follow "Retiring pages" in the [content](../content/SKILL.md) skill: `status: archived` + reason line, fix inbound links, ingest |
+| **Supersede** | Page duplicates another one or is replaced by a newer page | Merge the surviving knowledge into the target first, then follow "Retiring pages": `status: superseded` + `superseded_by`, repoint inbound links, ingest |
+
+Before archiving or superseding a page with `confidence` ≥ 0.7, confirm
+with the user: high-confidence pages are retired only on explicit
+approval.
 
 ### 3d. Resolve contradictions (when applicable)
 
@@ -127,7 +136,8 @@ Processed: N pages
   Updated (confidence raised): N
   Contradictions resolved: N
   Deferred: N
-  Flagged for deletion: N
+  Archived: N
+  Superseded: N (→ target slugs)
 
 Remaining in queue: N pages
   Errors: N
@@ -140,8 +150,9 @@ Suggested next session: start with the N Error findings.
 
 ## Key rules
 
-1. **Never delete** — use `status: archived` + `superseded_by`; deletion
-   removes the page from backlinks and breaks graph edges
+1. **Never delete**: retire pages with the content skill's "Retiring
+   pages" workflow (archive or supersede, then fix inbound links).
+   Deleting would erase the page's history and break graph edges.
 2. **Preserve claim history** — add to `claims[]`, do not replace existing
    entries; both the old and new versions should be visible
 3. **Defer is valid** — add a dated reason, move on; the queue rebuilds next

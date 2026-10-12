@@ -26,6 +26,8 @@ services:
     environment:
       LLM_WIKI_BOOTSTRAP_WIKI: ${LLM_WIKI_BOOTSTRAP_WIKI:-main}
       LLM_WIKI_ALLOWED_HOSTS: localhost,127.0.0.1,llm-wiki,agentgateway
+      LLM_WIKI_SEARCH_ARCHIVED: ${LLM_WIKI_SEARCH_ARCHIVED:-0.0}
+      LLM_WIKI_SEARCH_SUPERSEDED: ${LLM_WIKI_SEARCH_SUPERSEDED:-0.0}
       GIT_AUTHOR_NAME: ${GIT_AUTHOR_NAME:-llm-wiki}
       GIT_AUTHOR_EMAIL: ${GIT_AUTHOR_EMAIL:-llm-wiki@localhost}
     volumes:

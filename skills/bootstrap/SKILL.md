@@ -36,6 +36,11 @@ ignore any local `path` values returned by tools (e.g. by
 Do not call `wiki_resolve`; write pages with `wiki_content_write`
 (see the **content** skill).
 
+Never delete wiki pages. Retire them instead: archive or supersede via
+frontmatter, following "Retiring pages" in the **content** skill. In
+search results, a hit with `score: 0` is a retired page: do not cite
+it.
+
 ## Steps
 
 ### 0. Check server identity and index health

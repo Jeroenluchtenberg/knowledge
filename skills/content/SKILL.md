@@ -278,6 +278,87 @@ wiki_content_write(uri: "<slug>", content: "<full updated page>")
 wiki_ingest(path: "<slug>.md")
 ```
 
+## Retiring pages
+
+Pages are never deleted: neither MCP nor the CLI has a delete. To
+retire a page, change its frontmatter. Its history stays, and
+links to it can be repointed. This section is the canonical retirement workflow;
+other skills refer here.
+
+| Situation | Action |
+|-----------|--------|
+| Page is obsolete or wrong, or is a test/junk page | **Archive** |
+| Page was merged into, or replaced by, another page | **Supersede** |
+
+### Archive
+
+1. `wiki_content_read(uri: "<slug>")`
+2. Set `status: archived` in the frontmatter. Add a one-line reason as
+   the first line of the body:
+   `> Archived YYYY-MM-DD: <reason>`. Keep everything else verbatim.
+3. `wiki_content_write(uri: "<slug>", content: "<full page>")`
+
+### Supersede
+
+1. Make sure the target page exists and contains the knowledge that
+   survives. Create it or update it first (see
+   [Create a page](#create-a-page) and [Update a page](#update-a-page));
+   move over claims, sources and tags still worth keeping, and ingest
+   it.
+2. `wiki_content_read(uri: "<old-slug>")`
+3. Set `status: superseded` and `superseded_by: <target-slug>`. Keep
+   the body verbatim — reads of the page append a
+   `> **Superseded** by …` notice automatically.
+4. `wiki_content_write(uri: "<old-slug>", content: "<full page>")`
+
+### Then, for both: fix inbound links
+
+1. Find every page that points at the retired page:
+   - `wiki_content_read(uri: "<old-slug>", backlinks: true)` lists body
+     links (`[[slug]]`, `[text](slug)`).
+   - `wiki_graph(root: "<old-slug>", depth: 1, format: "json")` also
+     shows frontmatter references (`sources`, `concepts`,
+     `superseded_by`, …) — every edge with `"to": "<old-slug>"`.
+     Backlinks do not include these.
+2. For each linking page, read it, then:
+   - **superseded:** repoint the link (body and frontmatter) to the
+     target slug. A page that was itself `superseded_by` the old page
+     now points at the target, so there are no chains.
+   - **archived:** remove the link or reword the sentence so it no
+     longer relies on the archived page. Remove the slug from
+     frontmatter lists. A page `superseded_by` the archived page is
+     archived too (same workflow).
+
+   Change only the link; keep everything else verbatim. Write the full
+   page.
+3. Ingest every touched slug — the retired page and each linking page:
+   `wiki_ingest(path: "<slug>.md")`.
+4. Check: `wiki_content_read(uri: "<old-slug>", backlinks: true)`
+   returns `"backlinks": []`, and
+   `wiki_lint(rules: "broken-link")` has no new findings.
+
+### How retired pages behave
+
+| Tool | Behaviour |
+|------|-----------|
+| `wiki_search` | Still returned, but with `score: 0` (the deployment sets `search.status.archived`/`superseded` to `0.0`), ranked after every live hit. Treat hits with `score: 0` as retired: do not cite them. |
+| `wiki_list` | Included. `wiki_list(status: "active")` lists only live pages; `status` takes one exact value (`archived`, `superseded`, …). |
+| `wiki_suggest`, `wiki_graph` | Included, with no status filter. Never add a link to a retired page — check its `status` first. |
+| `wiki_export` | Skips `archived` pages; **includes** `superseded` ones (`status: "all"` includes both). |
+| `wiki_ingest` | Warns `schema validation: "archived" is not one of "active", "draft" …` — expected: the stock schemas do not list the retirement statuses and validation is loose. Do not revert the status. |
+| `wiki_lint` | A retired page with no inbound links is reported as `orphan` — expected, leave it. No rule flags links *to* retired pages, which is why step 1 above exists. |
+
+### Never
+
+- Never delete a page, empty its body, or rename/move it to hide it.
+- Never overwrite a page with a different topic — create a new page
+  and supersede the old one.
+- If a page really must be removed (e.g. secrets, personal or
+  otherwise sensitive content), do not try to remove it through MCP.
+  Tell the user it needs manual removal on the server
+  (`git rm` + commit + `wiki_index_rebuild`; the content stays in git
+  history unless that is rewritten) and stop.
+
 ## Create a section
 
 A section is a directory with an `index.md` that groups related pages.

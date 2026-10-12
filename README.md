@@ -65,8 +65,10 @@ It lists tools on both servers, queues a note, a URL
 (`--url-fixture ''` to skip when offline) and a PDF dropped straight into
 `inbox/` (simulating Syncthing), reads the PDF as Markdown, creates and
 ingests a page, finds it with search, archives one source and rejects
-another, commits, checks `git log`, and checks that path traversal is
-rejected. Exit code 0 means everything works. Ports are read from
+another, commits, checks `git log`, checks that path traversal is
+rejected, and retires pages: it supersedes one (repointing the link to
+it) and archives another, then checks search, the superseded notice and
+lint. Exit code 0 means everything works. Ports are read from
 `compose/.env`.
 
 ### Connect an agent
