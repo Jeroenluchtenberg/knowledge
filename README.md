@@ -38,7 +38,11 @@ docker compose -f compose/docker-compose.yml up -d --build --wait
 ```
 
 This builds both images (the first Rust build takes a few minutes) and
-starts:
+starts the services below. Instead of building, you can use the images CI
+publishes from `main` (`ghcr.io/jeroenluchtenberg/knowledge/{llm-wiki,wiki-inbox}`):
+set `LLM_WIKI_IMAGE`/`WIKI_INBOX_IMAGE` in `compose/.env` (see
+`.env.example`), then `docker compose … pull` and `up -d --wait` without
+`--build`. It starts:
 
 - **llm-wiki** on `http://localhost:8080/mcp` — creates and registers the
   wiki `main` (`compose/data/wikis/main`) on first start.

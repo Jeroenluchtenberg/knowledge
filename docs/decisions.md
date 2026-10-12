@@ -264,6 +264,27 @@ URLs with credentials are rejected. Size cap is enforced on
 - Emptied inbox subfolders are removed after archive/reject.
 - Unknown extensions are sniffed: UTF-8 without NUL bytes is text.
 
+### D15 — Image publishing (GHCR)
+
+The CI `publish` job runs on pushes to `main` only, after `wiki-inbox`,
+`skills` and `images` (build + smoke test) pass. It pushes
+`ghcr.io/<owner>/knowledge/llm-wiki` and `…/wiki-inbox` using the
+workflow's `GITHUB_TOKEN` (`packages: write`), so no extra secret is needed.
+The GHCR names are lowercased by `docker/metadata-action`.
+
+- **Tags:** the component version (`LLM_WIKI_VERSION` from the
+  Dockerfile = engine version, `version` from `wiki-inbox/pyproject.toml`),
+  `sha-<short>` and `latest`. The version tag **moves** when the image
+  changes without a version bump (e.g. entrypoint edits). Production
+  pins `sha-<short>` or the digest.
+- **Platform:** `linux/amd64` only. An arm64 build of the Rust engine
+  under QEMU takes too long. Add a native arm64 runner if needed.
+- **Build args:** default `UID`/`GID` 1000. Compose overrides the runtime
+  user, so the published images work for any UID (D6).
+- Reuses the `images` job's GHA build cache.
+- New GHCR packages start **private**. Make them public once in the
+  package settings if they should be pullable without login.
+
 ### D14 — Pages are retired, never deleted
 
 llm-wiki has no page delete (MCP or CLI). Pages are retired via
