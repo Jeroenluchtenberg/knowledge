@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+#
+# TEST ONLY — no authentication. Exposes llm-wiki and wiki-inbox as one
+# multiplexed MCP endpoint at http://localhost:3000/mcp.
+# Schema: agentgateway v1.6.0 (schema/config.json, examples/mcp-multiplex).
+# Production config (Authentik, routes.d fragments) lives in the Ansible roles.
+binds:
+- port: 3000
+  listeners:
+  - routes:
+    - matches:
+      - path:
+          pathPrefix: /mcp
+      backends:
+      - mcp:
+          # Tool names are unique across targets (wiki_* vs inbox_*), so keep
+          # them unprefixed: agents use the same names direct or via gateway.
+          prefixMode: never
+          targets:
+          - name: llm-wiki
+            mcp:
+              host: http://llm-wiki:8080/mcp
+          - name: wiki-inbox
+            mcp:
+              host: http://wiki-inbox:8081/mcp
