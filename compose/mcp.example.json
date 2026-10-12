@@ -1,0 +1,23 @@
+{
+  "_comment": "Example MCP client config for the compose test stack. Pick ONE of the two blocks: 'direct' (two servers) or 'gateway' (one multiplexed endpoint). The 'mcpServers' object is the Claude Code / Claude Desktop .mcp.json format; Hermes takes the same name + url pairs (see README). Tool names are identical in both modes (wiki_* and inbox_*). In production replace the URLs with the agentgateway hostname; auth (Authentik) is handled there.",
+  "direct": {
+    "mcpServers": {
+      "llm-wiki": {
+        "type": "http",
+        "url": "http://localhost:8080/mcp"
+      },
+      "wiki-inbox": {
+        "type": "http",
+        "url": "http://localhost:8081/mcp"
+      }
+    }
+  },
+  "gateway": {
+    "mcpServers": {
+      "knowledge": {
+        "type": "http",
+        "url": "http://localhost:3000/mcp"
+      }
+    }
+  }
+}

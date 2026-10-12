@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Compose test stack
+compose/data/
+compose/.env
+.env
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
