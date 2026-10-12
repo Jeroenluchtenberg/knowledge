@@ -1,6 +1,6 @@
 {
   "name": "knowledge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Skills for a remote llm-wiki knowledge base, used over MCP only (llm-wiki wiki_* tools + wiki-inbox inbox_* tools). Derived from geronimo-iia/llm-wiki-skills.",
   "author": { "name": "Jeroen Luchtenberg" },
   "license": "MIT OR Apache-2.0",

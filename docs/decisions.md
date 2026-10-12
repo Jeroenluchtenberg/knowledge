@@ -86,6 +86,74 @@ recorded with what was checked and the outcome. Sources: llm-wiki at tag
 - **Image:** `ghcr.io/agentgateway/agentgateway:v1.6.0` pinned by
   digest; runs as UID 65532; config via `-f /config/config.yaml`.
 
+### V7 — `search.status.<s> = 0.0` does not remove pages from `wiki_search`
+
+- **Checked:** `search.rs` `search()` builds the query
+  (`Must` text match, optional `type` filter, `MustNot type:section`)
+  and then ranks with `TopDocs::tweak_score`:
+  `score * status_mult * confidence`. The status multiplier only
+  changes the score; nothing filters by status or drops zero scores.
+  `wiki_search` has no `status` parameter (`mcp/tools.rs`).
+- **Verified** (running container, `archived`/`superseded` = `0.0`): a
+  query matching 2 live, 1 superseded and 1 archived page returns all
+  4, the retired ones with `score: 0.0` after both live hits. The
+  `status` facet counts them (`{"active": 2, "superseded": 1,
+  "archived": 1}`).
+- **Decision:** the entrypoint still sets both multipliers to
+  `LLM_WIKI_SEARCH_ARCHIVED` / `LLM_WIKI_SEARCH_SUPERSEDED` (default
+  `0.0`) on every start. Engine defaults: `archived` `0.3`, and
+  `superseded` is not in the map, so it gets the `unknown` weight
+  `0.9`. At `0.0` retired pages always rank after every live hit. Skills treat `score: 0` hits as
+  retired and never cite them. A page with `confidence: 0` also
+  scores 0, which is acceptable since such a page should not be cited
+  either. The smoke test asserts "not a live hit (score > 0)" and "if
+  listed, score 0 after all live hits" rather than absence.
+- **Upstream candidate:** a `status` filter (or excluding zero-score
+  hits) on `wiki_search`, similar to `wiki_list`'s `status`.
+- Config: `config set search.status.<key>` accepts any key
+  (`config.rs` `search_status_key`); per-wiki values override global.
+
+### V8 — Retired pages in the other tools
+
+Checked in the v1.0.1 source and against the running container:
+
+| Tool | Retired pages by default | Status parameter |
+|---|---|---|
+| `wiki_list` | **Included** (no default filter) | `status: "<value>"`, one exact term (`active`, `archived`, `superseded`, …) |
+| `wiki_list(format: "llms")` | Included; `archived` struck through (`~~…~~`), `superseded` not marked | as above |
+| `wiki_suggest` | **Included**: an archived page was suggested via shared tags | none |
+| `wiki_graph` | **Included**, as nodes; `superseded_by` gives a `superseded-by` edge | none (only `type`, `relation`) |
+| `wiki_export` | `archived` **excluded**; `superseded` **included** (`export.rs` checks `status == "archived"` only) | `status: "all"` includes archived |
+| `wiki_stats` | Counted in the `status` facet | — |
+| `wiki_content_read` | Readable; when `superseded_by` is set, appends `> **Superseded** by [<slug>](wiki://<slug>)` | — |
+
+The notice link omits the wiki name (`wiki://<slug>`), and it depends
+on `superseded_by`, not on `status`. `backlinks: true` covers body
+links only (term query on `body_links`). Frontmatter references
+(`sources`, `concepts`, `superseded_by`) appear only as incoming edges
+in `wiki_graph(root: <slug>, depth: 1)`. Verified: a page referencing
+D via `concepts:` has a `depends-on` edge to D but is absent from D's
+backlinks. The content skill's retirement workflow therefore uses both.
+
+### V9 — Lint and validation of retired pages
+
+- **No rule for links to retired pages.** `rule_broken_link` only
+  checks that the target slug exists; a live page linking a
+  superseded/archived page is not flagged (verified). The lint skill
+  adds a manual check (list retired pages → backlinks + graph).
+- **`orphan` does not skip retired pages.** A retired page without
+  inbound links is reported as an orphan (expected; skills say so).
+  `superseded_by` counts as an inbound link for the target. Only
+  `stale` skips non-`active` pages.
+- **Stock schemas reject the statuses.** Every embedded schema
+  declares `status` as `enum: [active, draft, stub, generated]`. With
+  the default `validation.type_strictness = loose`, ingest succeeds with
+  the warning `schema validation: "superseded" is not one of "active",
+  "draft" or 2 other candidates`. Under `strict` the ingest of a
+  retired page would **fail**, so keep `loose`, or add custom
+  schemas that extend the enum before switching. Skills tell agents
+  the warning is expected.
+
 ---
 
 ## Other decisions and findings
@@ -195,6 +263,19 @@ URLs with credentials are rejected. Size cap is enforced on
   `inbox_list` (`has_source: true` instead).
 - Emptied inbox subfolders are removed after archive/reject.
 - Unknown extensions are sniffed: UTF-8 without NUL bytes is text.
+
+### D14 — Pages are retired, never deleted
+
+llm-wiki has no page delete (MCP or CLI). Pages are retired via
+frontmatter: `status: archived` (+ a `> Archived YYYY-MM-DD: <reason>`
+line) or `status: superseded` + `superseded_by: <slug>` (target page
+first). Inbound links are then repointed or removed and every touched
+slug is ingested. The canonical workflow is "Retiring pages" in
+`skills/content/SKILL.md`; other skills refer to it. Removing a page
+outright (sensitive content) is a manual server-side `git rm` + commit
++ `wiki_index_rebuild`. Agents only report that it is needed. Smoke
+test step 10 covers supersede, archive, repointing and lint. Engine
+behaviour: V7–V9.
 
 ### D13 — Local port clash during verification
 

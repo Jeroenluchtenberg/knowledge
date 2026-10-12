@@ -21,8 +21,6 @@ compatibility: "llm-wiki >= 1.0.0"
 
 > Modified for remote MCP-only use — see [UPSTREAM.md](../UPSTREAM.md).
 
-> Modified for remote MCP-only use — see [UPSTREAM.md](../UPSTREAM.md).
-
 Structural audit of the wiki. Find quality issues, report them, and
 offer fixes.
 
@@ -95,6 +93,11 @@ Target a specific wiki:
 ```
 wiki_lint(wiki: "research")
 ```
+
+Retired pages (`status: archived` / `superseded`) are linted like any
+other page. Without inbound links they show up as `orphan`, which is
+expected: do not "fix" them by adding links. No rule flags links
+*to* retired pages; see "Links to retired pages" below.
 
 An empty `findings` array means the wiki is clean for these rules.
 `error` findings should be fixed before anything else; filter them with `wiki_lint(severity: "error")`.
@@ -180,6 +183,21 @@ wiki_stats()
 The `status` facet (keyword FAST field) shows the distribution (e.g. `active: 40, draft: 3`).
 Review draft pages: are they progressing, abandoned, or placeholders?
 
+### Links to retired pages
+
+No engine rule catches live pages that still point at retired ones.
+Check them explicitly:
+
+```
+wiki_list(status: "superseded", page_size: 200)
+wiki_list(status: "archived", page_size: 200)
+```
+
+For each retired slug, `wiki_content_read(uri: "<slug>", backlinks: true)`
+(body links) and `wiki_graph(root: "<slug>", depth: 1, format: "json")`
+(frontmatter references: edges with `"to": "<slug>"`). Any linking page
+that is itself live needs its link repointed or removed.
+
 ### Under-linked pages
 
 ```
@@ -188,11 +206,15 @@ wiki_suggest(slug: "<slug>", limit: 10)
 
 Pages with many high-score suggestions are likely under-linked.
 Requires relevance judgment — don't link for graph density.
+`wiki_suggest` also proposes retired pages, so check a candidate's
+`status` before linking to it.
 
 ## Report findings
 
 Present findings grouped by category, leading with `wiki_lint` output:
 
+- **Retirement candidates** — junk and duplicate pages (see Fix issues)
+- **Links to retired pages** — live pages still pointing at archived/superseded pages
 - **Engine findings** — orphans, broken links, missing fields, stale, unknown types, articulation points, bridges, peripheral pages
 - **Schema issues** — invalid schemas, field conflicts
 - **Edge type mismatches** — wrong target types on graph edges
@@ -206,13 +228,18 @@ For each category:
 
 - **Broken links** — remove dead references or create the missing pages
 - **Broken cross-wiki links** — run `wiki_spaces_list()` to confirm the wiki name; if the target wiki is intentionally not mounted (referencing a planned future space), the Warning can be acknowledged and ignored; otherwise fix the wiki name or mount the space
-- **Orphan pages** — add a `[[slug]]` reference from a related page, or link from a section or index page
+- **Orphan pages** — add a `[[slug]]` reference from a related page, or link from a section or index page. If the orphan is junk (test page, empty stub, nonsense), **archive** it instead. Orphans that are already retired need nothing
+- **Duplicate pages** — merge into the better page, then **supersede** the other one (`superseded_by: <survivor>`)
+- **Links to retired pages** — repoint to the `superseded_by` target, or remove/reword the link to an archived page, then ingest the linking page
 - **Missing fields** — read the page (`wiki_content_read`) and add the required frontmatter field for its type; use `wiki_schema(action: "show", type: "<type>")` to see what is required
 - **Stale pages** — review and update content, set `last_updated` to today, and raise `confidence` to reflect current certainty; a page with `confidence: 0.9` is not stale even if old
 - **Unknown type** — correct the typo in the `type:` field, or ask the server operator to register the new type (see the **schema** skill); run `wiki_schema(action: "list")` to see registered types
 - **Schema issues** — fix the schema file, then `wiki_schema(action: "validate")`
 - **Edge type mismatches** — fix the frontmatter field, then `wiki_ingest`
 - **Missing stubs** — `wiki_content_new(uri: "<slug>", type: "<type>")`
+
+Archive and supersede follow "Retiring pages" in the
+[content](../content/SKILL.md) skill. Lint never deletes pages.
 - **Empty sections** — create or move pages under the section
 
 After each fix:

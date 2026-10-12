@@ -58,6 +58,9 @@ machines **over MCP only**.
   llm-wiki's `config.toml` (read-only mount, re-read per call).
 - **Same UID/GID** for both containers and the host user (Syncthing), so
   files stay editable everywhere. Containers run non-root.
+- **Pages are retired, never deleted:** `status: archived` /
+  `superseded` + `superseded_by`, with inbound links repointed (see
+  decisions D14). Retired pages score 0 in search.
 - `wiki_ingest` and `wiki_content_commit` (without slugs) stage the
   **whole repository** (`git add -A` semantics), including `inbox/`,
   `raw/` and deletions. The bootstrap wiki gets a `.gitignore` for

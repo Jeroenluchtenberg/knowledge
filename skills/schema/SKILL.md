@@ -201,8 +201,12 @@ wiki_schema(action: "remove", type: "<type>")
 ```
 
 The `default` type cannot be removed. Add `delete: true` to also
-modify/delete the schema file. Add `delete_pages: true` to delete
-page files from disk. Use `dry_run: true` to preview.
+modify/delete the schema file. Use `dry_run: true` to preview.
+
+Never pass `delete_pages: true`: it deletes page files, and wiki pages
+are never deleted. Retire the pages of a type first, by archiving or
+superseding them as in "Retiring pages" in the
+[content](../content/SKILL.md) skill, or leave them; the user decides.
 
 ## Validate schemas
 

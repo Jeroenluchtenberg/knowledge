@@ -21,6 +21,10 @@ ALLOWED_HOSTS="${LLM_WIKI_ALLOWED_HOSTS:-localhost,127.0.0.1,llm-wiki}"
 llm-wiki config set serve.http_allowed_hosts "$ALLOWED_HOSTS" --global >/dev/null
 llm-wiki config set logging.log_format "${LLM_WIKI_LOG_FORMAT:-json}" --global >/dev/null
 llm-wiki config set logging.log_path "" --global >/dev/null
+# Retired pages: BM25 score multipliers. 0.0 scores them 0 but does not
+# drop them from results (docs/decisions.md V7).
+llm-wiki config set search.status.archived "${LLM_WIKI_SEARCH_ARCHIVED:-0.0}" --global >/dev/null
+llm-wiki config set search.status.superseded "${LLM_WIKI_SEARCH_SUPERSEDED:-0.0}" --global >/dev/null
 
 # 3. Git identity for engine commits. git2's Repository::signature() reads
 #    user.name/user.email from the git config chain (incl. ~/.gitconfig).

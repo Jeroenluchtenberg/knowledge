@@ -21,6 +21,7 @@ import subprocess
 import sys
 import uuid
 from contextlib import AsyncExitStack
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ COMPOSE = ROOT / "compose"
 WIKI_TOOLS = {
     "wiki_spaces_list", "wiki_content_new", "wiki_content_read", "wiki_content_write",
     "wiki_content_commit", "wiki_ingest", "wiki_search", "wiki_list", "wiki_suggest",
+    "wiki_lint", "wiki_info",
 }  # fmt: skip
 INBOX_TOOLS = {
     "inbox_list", "inbox_read", "inbox_add", "inbox_add_url", "inbox_archive", "inbox_reject",
@@ -94,6 +96,14 @@ def make_pdf(path: Path, text: str) -> None:
     c.save()
 
 
+def page(title: str, body: str, *, status: str = "active", extra: str = "") -> str:
+    return (
+        f'---\ntitle: "{title}"\ntype: concept\nstatus: {status}\n{extra}'
+        f'summary: "Smoke-test page {title}."\nread_when: ["Running the smoke test"]\n'
+        f"tags: [smoke-test]\nconfidence: 0.5\n---\n\n{body}\n"
+    )
+
+
 class Tools:
     """Routes a tool name to the client that serves it."""
 
@@ -114,6 +124,24 @@ class Tools:
             return json.loads(text)
         except ValueError:
             return text
+
+    async def write_page(self, slug: str, content: str, *, new: bool = False) -> None:
+        if new:
+            await self.call("wiki_content_new", {"uri": slug, "type": "concept", "name": slug})
+        await self.call("wiki_content_write", {"uri": slug, "content": content})
+        report = await self.call("wiki_ingest", {"path": slug + ".md"})
+        check(report.get("pages_validated", 0) >= 1, f"wrote + ingested {slug}", report)
+
+    async def search(self, query: str, until: Any = None) -> list[dict[str, Any]]:
+        """wiki_search, retried until `until(results)` holds (the index updates async)."""
+        results: list[dict[str, Any]] = []
+        for _ in range(10):
+            hits = await self.call("wiki_search", {"query": query, "top_k": 50})
+            results = hits.get("results", []) if isinstance(hits, dict) else []
+            if until is None or until(results):
+                break
+            await asyncio.sleep(0.5)
+        return results
 
 
 async def main() -> None:
@@ -283,6 +311,84 @@ async def main() -> None:
         ok("inbox_archive ../wiki.toml rejected")
         await tools.call("inbox_list", {"wiki": "/etc"}, expect_error=True)
         ok("raw filesystem path as wiki name rejected")
+
+        step("10. retire pages (supersede + archive)")
+        word = f"Pangolin{token}"
+        a, b, c, d = (f"concepts/smoke-{token}-{x}" for x in "abcd")
+        await tools.write_page(a, page("A", f"{word} scales are keratin."), new=True)
+        await tools.write_page(b, page("B", f"See [[{a}]] for {word} scales."), new=True)
+        back = await tools.call("wiki_content_read", {"uri": a, "backlinks": True})
+        check([x["slug"] for x in back["backlinks"]] == [b], f"{b} links to {a}", back)
+
+        # Supersede A with C: target first, then the old page, then inbound links.
+        await tools.write_page(
+            c, page("C", f"{word} scales are keratin (merged from A)."), new=True
+        )
+        await tools.write_page(
+            a,
+            page("A", f"{word} scales are keratin.", status="superseded",
+                 extra=f"superseded_by: {c}\n"),
+        )  # fmt: skip
+        await tools.write_page(b, page("B", f"See [[{c}]] for {word} scales."))
+        back = await tools.call("wiki_content_read", {"uri": a, "backlinks": True})
+        check(back["backlinks"] == [], f"no backlinks left on {a}", back)
+
+        def live(results: list[dict[str, Any]]) -> set[str]:
+            # The engine multiplies the BM25 score by search.status.<status>
+            # (0.0 for archived/superseded): retired pages stay in the
+            # results with score 0, after every live hit (docs/decisions.md V7).
+            return {r["slug"] for r in results if r["score"] > 0}
+
+        def check_retired_hit(results: list[dict[str, Any]], slug: str) -> None:
+            idx = next((i for i, r in enumerate(results) if r["slug"] == slug), None)
+            if idx is None:
+                ok(f"{slug} not in wiki_search results at all")
+                return
+            check(
+                all(r["score"] == 0 for r in results[idx:]),
+                f"{slug} still listed (rank {idx + 1}/{len(results)}) with score 0, after live hits",
+                results,
+            )
+
+        results = await tools.search(word, until=lambda rs: a not in live(rs) and c in live(rs))
+        check(c in live(results), f"wiki_search returns {c}", results)
+        check(
+            a not in live(results),
+            f"wiki_search no longer returns {a} as a live hit",
+            results,
+        )
+        check_retired_hit(results, a)
+        notice = await tools.call("wiki_content_read", {"uri": a})
+        check(
+            isinstance(notice, str) and "**Superseded** by" in notice and c in notice,
+            f"reading {a} shows the superseded notice",
+            notice,
+        )
+
+        # Archive D.
+        await tools.write_page(d, page("D", f"{word} junk test page."), new=True)
+        results = await tools.search(word, until=lambda rs: d in live(rs))
+        check(d in live(results), f"wiki_search returns {d} before archiving", results)
+        await tools.write_page(
+            d,
+            page("D", f"> Archived {date.today()}: smoke test junk page.\n\n{word} junk test page.",
+                 status="archived"),
+        )  # fmt: skip
+        results = await tools.search(word, until=lambda rs: d not in live(rs))
+        check(
+            d not in live(results),
+            f"wiki_search no longer returns archived {d}",
+            results,
+        )
+        check_retired_hit(results, d)
+
+        lint = await tools.call("wiki_lint", {"rules": "broken-link", "page_size": 500})
+        broken = [f for f in lint.get("findings", []) if token in f.get("slug", "")]
+        check(
+            not broken,
+            "wiki_lint: no broken links on the retired/repointed pages",
+            broken,
+        )
 
         # Tidy up the leftovers so the inbox stays clean between runs.
         for leftover in (pdf_name, url_file):
