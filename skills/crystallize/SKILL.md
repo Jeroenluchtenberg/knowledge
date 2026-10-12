@@ -63,7 +63,11 @@ wiki_search(query: "<topic>")
 ```
 
 If a concept page, section index, or prior query-result already covers
-this ground, prefer updating it over creating a new page.
+this ground, prefer updating it over creating a new page. Ignore
+retired pages as homes: search hits with `score: 0`, pages with
+`status: archived`/`superseded` (archived ones are struck through in
+the `llms` list). A superseded page's notice names its replacement;
+use that instead.
 
 Read candidates to check scope:
 
@@ -78,7 +82,8 @@ Before creating or updating any page, produce a concise extraction plan.
 For each item of durable knowledge in the session, note:
 - **What** — one sentence describing the knowledge
 - **Type** — `decision`, `finding`, `pattern`, `open-question`
-- **Action** — `create <type> <slug>`, `update <slug>`, or `discard`
+- **Action** — `create <type> <slug>`, `update <slug>`,
+  `replace <old-slug> with <type> <new-slug>`, or `discard`
 - **Confidence** — estimated score (see calibration table below)
 
 Example plan output:
@@ -152,6 +157,22 @@ Respect the accumulation contract:
 ```
 wiki_content_write(uri: "<slug>", content: "<updated markdown>")
 ```
+
+## Replace an existing page
+
+Use this when the session's knowledge **replaces** a page rather than
+refining it: the old conclusion was reversed, or the topic has been
+split or renamed. Do not reuse the old page for it.
+
+1. Create the new page as above, carrying over the old page's claims,
+   sources and tags that still hold.
+2. Ingest it.
+3. Supersede the old page (`status: superseded`,
+   `superseded_by: <new-slug>`) and repoint inbound links, following
+   "Retiring pages" in the [content](../content/SKILL.md) skill.
+
+Never overwrite a page with a different topic, and never delete or
+empty the old page.
 
 ## Validate and index
 

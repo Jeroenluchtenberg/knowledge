@@ -151,6 +151,11 @@ This serves two purposes:
 If multiple candidate pages could be the integration target, ask
 the user which one to update.
 
+Retired pages are never integration targets. Skip search hits with
+`score: 0` and pages with `status: archived`/`superseded`. If a page
+you read shows a `> **Superseded** by …` notice, work with its
+`superseded_by` page instead.
+
 #### 2d. Analyse the source
 
 Before writing anything, produce an analysis of the source:
@@ -196,6 +201,12 @@ the plan as written — flag any contradictions as `status: draft`.
 - If a concept page already covers this topic → update it with new
   claims and sources
 - If no existing page → create a new one
+- If the source **replaces** an existing page instead of extending it
+  (the page is outdated as a whole, or the topic was renamed or split)
+  → create the new page, ingest it, then supersede the old page
+  (`superseded_by: <new-slug>`) and repoint its inbound links, following
+  "Retiring pages" in the **content** skill. Never overwrite one
+  topic's page with a different topic
 - If the source introduces a new concept → create a concept page
 - If the source is a summary of a specific document → create a source
   page with the classified type
@@ -354,7 +365,8 @@ ones.
    only; never touch wiki paths with local tools
 2. **You move the file, through MCP** — `inbox_archive` after a
    successful ingest, `inbox_reject` with a reason otherwise; the
-   engine never moves inbox files, and nothing is ever deleted
+   engine never moves inbox files, and nothing is ever deleted (wiki
+   pages are retired, not deleted; see the **content** skill)
 3. **Commit at the end** — `wiki_content_commit` after the batch so
    the moves are recorded in git
 4. **Synthesize, do not copy** — wiki pages contain synthesized

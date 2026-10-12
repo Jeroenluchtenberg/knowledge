@@ -58,7 +58,9 @@ check, staleness, structural rules) to avoid noise.
 ### Orphans and connectivity
 
 `orphans` — pages with zero inbound edges. Any orphan is a candidate
-for a new link or deletion. Run `wiki_lint(rules: "orphan")` for the
+for a new link or, if it is junk, for archiving (see "Retiring pages" in
+the **content** skill). Retired pages without inbound links also count
+as orphans; that is expected. Run `wiki_lint(rules: "orphan")` for the
 full list with paths.
 
 `avg_connections` — mean edges per node. Below ~1.5 on a wiki with

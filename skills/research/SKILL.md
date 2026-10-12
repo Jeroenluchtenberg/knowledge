@@ -17,6 +17,8 @@ compatibility: "llm-wiki >= 1.0.0"
 
 # Research
 
+> Modified for remote MCP-only use — see [UPSTREAM.md](../UPSTREAM.md).
+
 Search the wiki, read relevant pages, and synthesize an answer from
 existing knowledge. The wiki is the persistent knowledge base — use it
 before generating from scratch.
@@ -61,6 +63,10 @@ Search across all registered wikis:
 wiki_search(query: "<topic>", cross_wiki: true)
 ```
 
+Retired pages still appear in results, with `score: 0`, after every
+live hit (the `status` facet counts them as `archived`/`superseded`).
+Do not read or cite them as current knowledge.
+
 Include section index pages (excluded by default):
 
 ```
@@ -74,6 +80,13 @@ Read the most relevant pages:
 ```
 wiki_content_read(uri: "<slug>")
 ```
+
+If the page ends with a `> **Superseded** by [<slug>](…)` notice (its
+frontmatter has `status: superseded` and `superseded_by`), read the
+`superseded_by` page and answer from that one; follow the chain if it
+is superseded too. If the page has `status: archived`, it is obsolete
+or wrong: do not cite it as current knowledge. Mention it only as
+history, and label it archived.
 
 Follow `sources` and `concepts` links in frontmatter to find related
 pages that add context. A concept's `sources` field points to the
@@ -129,7 +142,8 @@ Compose an answer from the wiki's knowledge:
 
 - Use the `type` facet to suggest broadening or narrowing the search
   (e.g. "there are also 8 papers on this topic")
-- Cite sources with `wiki://` URIs (e.g. `wiki://concepts/moe`)
+- Cite sources with `wiki://` URIs (e.g. `wiki://concepts/moe`) — only
+  live pages, never archived or superseded ones
 - Distinguish between what concept pages say (synthesized knowledge)
   and what source pages claim (provenance)
 - Note confidence levels where available — the `confidence` float (0.0–1.0)

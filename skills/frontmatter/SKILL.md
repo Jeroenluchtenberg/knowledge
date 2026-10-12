@@ -157,11 +157,58 @@ claims:
 
 Who is responsible — a person, team, or agent session ID.
 
+### status
+
+Lifecycle state of the page:
+
+| Value | Meaning |
+|-------|---------|
+| `active` | Live, reviewed knowledge |
+| `draft` | Incomplete or unverified — picked up by the **review** skill |
+| `stub` | Placeholder awaiting content |
+| `generated` | Written by a tool (e.g. section indexes) |
+| `archived` | Retired: obsolete, wrong, or a test/junk page |
+| `superseded` | Retired: replaced by the page in `superseded_by` |
+
+`archived` and `superseded` are set only through the retirement
+workflow ("Retiring pages" in the [content](../content/SKILL.md)
+skill), which also repoints links to the page. Retired pages score 0
+in search. The stock schemas only list the first four values, so
+ingesting a retired page warns
+`schema validation: "archived" is not one of …` — expected.
+
+Archived page:
+
+```yaml
+---
+title: "Smoke Test Page"
+type: concept
+status: archived
+...
+---
+
+> Archived 2026-10-12: test page, no real content.
+
+## Overview
+…
+```
+
 ### superseded_by
 
-Slug of the page that replaces this one. Use when a page is
-effectively replaced, not for minor updates. Creates a
-`superseded-by` graph edge.
+Slug of the page that replaces this one. Set it together with
+`status: superseded`. Use it when a page is replaced or merged into
+another, not for minor updates. It creates a `superseded-by` graph
+edge, and reading the page appends a `> **Superseded** by …` notice.
+
+```yaml
+---
+title: "MoE Routing (old)"
+type: concept
+status: superseded
+superseded_by: concepts/mixture-of-experts
+...
+---
+```
 
 ## Graph edges from frontmatter fields
 

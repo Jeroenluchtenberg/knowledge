@@ -34,7 +34,9 @@ wiki_export(wiki: "research")
 ```
 
 Default output: `llms.txt` at the wiki repository root, `llms-txt` format,
-`active` pages only.
+every page except `status: archived` ones. Superseded pages are
+**included** by default (the engine only filters `archived`); note this
+when the export is published.
 
 ## Choosing a format
 
@@ -57,7 +59,7 @@ The default path `llms.txt` lands at the wiki root. This file:
 - Is served by the Hugo scaffold at `/<wiki>/llms.txt` when committed
 - Can be committed to git as a snapshot: `wiki_content_commit`
 
-Include drafts when the export is for internal review only:
+Include archived pages too when the export is for internal review only:
 
 ```
 wiki_export(wiki: "research", status: "all")

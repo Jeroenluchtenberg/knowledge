@@ -12,6 +12,10 @@ assumptions: [docs/decisions.md](docs/decisions.md).
   Read/Write/Edit/Bash, `mv`, `wiki_resolve`, or `llm-wiki` CLI calls —
   the only exception is the `bootstrap` sentence that forbids them. CI
   greps for this.
+- **Pages are retired, never deleted.** Skills must not tell an agent
+  to delete, empty or rename a page; the retirement workflow lives in
+  `skills/content/SKILL.md` ("Retiring pages"), and other skills link
+  to it.
 - **Only llm-wiki commits.** Never add git operations to wiki-inbox.
 - **Wiki names, never paths.** wiki-inbox tools accept a wiki *name*;
   every file argument is relative to that wiki's `inbox/` and checked

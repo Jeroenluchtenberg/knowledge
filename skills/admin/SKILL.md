@@ -86,11 +86,17 @@ Higher weight = pages with that status rank higher:
 ```
 wiki_config(action: "set", key: "search.status.active", value: "1.2")
 wiki_config(action: "set", key: "search.status.draft", value: "0.3")
-wiki_config(action: "set", key: "search.status.archived", value: "0.1")
+wiki_config(action: "set", key: "search.status.stub", value: "0.5")
 ```
 
 Custom status values from your schemas work the same way. Per-wiki
 values override global ones.
+
+`search.status.archived` and `search.status.superseded` are set by the
+deployment (default `0.0`, env `LLM_WIKI_SEARCH_ARCHIVED` /
+`LLM_WIKI_SEARCH_SUPERSEDED`) and are reapplied on restart. Leave them:
+at `0.0`, retired pages score 0 and rank after every live hit. They are
+still returned.
 
 ### Server settings — do not change over MCP
 
